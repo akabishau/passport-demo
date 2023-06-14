@@ -6,6 +6,7 @@ const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
+const bcrypt = require('bcryptjs')
 
 const mongoDb = process.env.MONGODB_URI
 mongoose.connect(mongoDb, { useUnifiedTopology: true, useNewUrlParser: true })
@@ -35,10 +36,13 @@ passport.use(
             if (!user) {
                 return done(null, false, { message: 'Incorrect username' })
             }
-            if (user.password !== password) {
-                return done(null, false, {message: 'Incorrect password' })
-            }
-            return done(null, user)
+            bcrypt.compare(password, user.password, (err, result) => {
+                if (result) {
+                    return done(null, user)
+                } else {
+                    return done(null, false, { message: 'Incorrect Password' })
+                }
+            })
         } catch (err) {
             return done(err)
         }
@@ -59,8 +63,6 @@ passport.deserializeUser(async function (id, done) {
         done(err)
     }
 })
-
-
 
 
 app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }))
@@ -102,11 +104,8 @@ app.get('/log-out', (req, res, next) => {
 app.get('/sign-up', (req, res) => res.render('sign-up-form'))
 app.post('/sign-up', async (req, res, next) => {
     try {
-        const user = new User({
-            username: req.body.username,
-            password: req.body.password
-        })
-        const result = await user.save()
+        const hashedPassword = await bcrypt.hash(req.body.password, 10)
+        await User.create({ username: req.body.username, password: hashedPassword })
         res.redirect('/')
     } catch (err) {
         return next(err)
