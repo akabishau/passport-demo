@@ -32,7 +32,7 @@ passport.use(
         console.log('LocalStrategy')
         try {
             const user = await User.findOne({ username: username })
-
+            // messages can be accessed in req.session.messages
             if (!user) {
                 return done(null, false, { message: 'Incorrect username' })
             }
@@ -80,7 +80,12 @@ app.use(function(req, res, next) {
 
 
 app.get("/", (req, res) => {
-    res.render("index") // user is stored in the locals.currentUser
+    let messages = []
+    if (req.session.messages) {
+        messages = req.session.messages
+        req.session.messages = []
+    }
+    res.render('index', { messages }) // user is stored in the locals.currentUser
 })
 
 
@@ -88,10 +93,20 @@ app.post(
     '/log-in',
     passport.authenticate("local", {
         successRedirect: "/",
-        failureRedirect: "/"
+        failureRedirect: "/",
+        failureMessage: true // put messages into array req.session.messages
     })
 )
 
+app.get('/log-out', (req, res, next) => {
+    req.session.destroy(function(err) {
+        res.redirect('/')
+    })
+})
+
+
+// tutorial asks to switch to req.session.destroy to remove session information
+// my understanding when using Passport, it's better to call .logut
 app.get('/log-out', (req, res, next) => {
     req.logout(function (err) {
         if (err) {
@@ -100,6 +115,7 @@ app.get('/log-out', (req, res, next) => {
         res.redirect('/')
     })
 })
+
 
 app.get('/sign-up', (req, res) => res.render('sign-up-form'))
 app.post('/sign-up', async (req, res, next) => {
