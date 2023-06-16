@@ -128,4 +128,26 @@ app.post('/sign-up', async (req, res, next) => {
     }
 })
 
+
+const authMiddleware = (req, res, next) => {
+    if (!req.user) {
+        if (!req.session.messages) {
+            req.session.messages = []
+        }
+        req.session.messages.push(`You can't access that page before logon`)
+        res.redirect('/')
+    } else {
+        next()
+    }
+}
+
+app.get('/restricted', authMiddleware, (req, res) => {
+    if (!req.session.pageCount) {
+        req.session.pageCount = 1
+    } else {
+        req.session.pageCount += 1
+    }
+    res.render('restricted', { pageCount: req.session.pageCount })
+})
+
 app.listen(3000, () => console.log('app listening on port 3000!'))
