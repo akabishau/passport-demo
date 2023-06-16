@@ -69,7 +69,7 @@ passport.deserializeUser(async function (id, done) {
 const MongoDBStore = require('connect-mongodb-session')(session) // integrates express-session to the package
 var store = new MongoDBStore({ uri: process.env.MONGODB_URI, collection: 'sessions' })
 // event listener for any errors
-store.on('error', function(error) {
+store.on('error', function (error) {
     console.log(error)
 })
 
@@ -81,7 +81,7 @@ app.use(passport.session())
 app.use(express.urlencoded({ extended: false }))
 
 
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
     res.locals.currentUser = req.user
     console.log('res.locals.currentUser')
     console.log(req.user)
@@ -89,7 +89,7 @@ app.use(function(req, res, next) {
 })
 
 
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
     let messages = []
     if (req.session.messages) {
         messages = req.session.messages
@@ -101,15 +101,15 @@ app.get("/", (req, res) => {
 
 app.post(
     '/log-in',
-    passport.authenticate("local", {
-        successRedirect: "/",
-        failureRedirect: "/",
+    passport.authenticate('local', {
+        successRedirect: '/',
+        failureRedirect: '/',
         failureMessage: true // put messages into array req.session.messages
     })
 )
 
 app.get('/log-out', (req, res, next) => {
-    req.session.destroy(function(err) {
+    req.session.destroy(function (err) {
         res.redirect('/')
     })
 })
