@@ -65,7 +65,17 @@ passport.deserializeUser(async function (id, done) {
 })
 
 
-app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }))
+// store session information in mongo
+const MongoDBStore = require('connect-mongodb-session')(session) // integrates express-session to the package
+var store = new MongoDBStore({ uri: process.env.MONGODB_URI, collection: 'sessions' })
+// event listener for any errors
+store.on('error', function(error) {
+    console.log(error)
+})
+
+
+// middelware initialized with the session object with options, including using mongo db as a store
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true, store: store }))
 app.use(passport.initialize())
 app.use(passport.session())
 app.use(express.urlencoded({ extended: false }))
