@@ -22,11 +22,28 @@ const User = mongoose.model(
 )
 
 const app = express()
-app.set('views', __dirname)
+app.use(express.urlencoded({ extended: false })) // enable express to parse form data from the request body
+
+// configure UI 
+app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'ejs')
 
 
 
+// store session information in mongo
+const MongoDBStore = require('connect-mongodb-session')(session) // integrates express-session to the package
+var store = new MongoDBStore({ uri: process.env.MONGODB_URI, collection: 'sessions' })
+// event listener for any errors
+store.on('error', function (error) {
+    console.log(error)
+})
+
+
+// middelware initialized with the session object with options, including using mongo db as a store
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true, store: store }))
+
+
+// configure Passport: username and password names are predefined for the local strategy
 passport.use(
     new LocalStrategy(async (username, password, done) => {
         console.log('LocalStrategy')
@@ -51,7 +68,6 @@ passport.use(
 
 // creates session cookie stored in browser
 passport.serializeUser(function (user, done) {
-    console.log('passport.serializeUser')
     done(null, user.id)
 })
 
@@ -64,31 +80,17 @@ passport.deserializeUser(async function (id, done) {
     }
 })
 
-
-// store session information in mongo
-const MongoDBStore = require('connect-mongodb-session')(session) // integrates express-session to the package
-var store = new MongoDBStore({ uri: process.env.MONGODB_URI, collection: 'sessions' })
-// event listener for any errors
-store.on('error', function (error) {
-    console.log(error)
-})
-
-
-// middelware initialized with the session object with options, including using mongo db as a store
-app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true, store: store }))
 app.use(passport.initialize())
 app.use(passport.session())
-app.use(express.urlencoded({ extended: false }))
-
-
 app.use(function (req, res, next) {
     res.locals.currentUser = req.user
-    console.log('res.locals.currentUser')
-    console.log(req.user)
     next()
 })
 
 
+// routes //
+
+// shows login form
 app.get('/', (req, res) => {
     let messages = []
     if (req.session.messages) {
@@ -107,12 +109,6 @@ app.post(
         failureMessage: true // put messages into array req.session.messages
     })
 )
-
-app.get('/log-out', (req, res, next) => {
-    req.session.destroy(function (err) {
-        res.redirect('/')
-    })
-})
 
 
 // tutorial asks to switch to req.session.destroy to remove session information
@@ -139,6 +135,7 @@ app.post('/sign-up', async (req, res, next) => {
 })
 
 
+// restricted route
 const authMiddleware = (req, res, next) => {
     if (!req.user) {
         if (!req.session.messages) {
